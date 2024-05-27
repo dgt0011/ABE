@@ -2,7 +2,7 @@
   "profiles": {
     "ABE.DBUpgrader": {
       "commandName": "Project",
-      "commandLineArgs": "--connectionString=\"Host=192.168.0.234;Port=5432;Username=dbo;Password=qbuiTvd34JTGs9X47y89M!k!!;Database=postgresdb;Timeout=14;Pooling=true;MinPoolSize=100;MaxPoolSize=500;\""
+      "commandLineArgs": ""
     }
   }
 }
