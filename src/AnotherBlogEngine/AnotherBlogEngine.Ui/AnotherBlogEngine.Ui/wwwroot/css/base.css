@@ -1,0 +1,30 @@
+﻿@import url("reset.css");
+
+:root {
+    --abe-back-color: #fff;
+    --abe-fore-color: #000000;
+    /* accent color */
+    --abe-color: #622aff;
+    /* header */
+    --abe-header-title-size: 1.5rem;
+    --abe-header-title-weight: 700;
+    --abe-header-title-color: #000;
+    --abe-header-title-hover: #622aff;
+    --abe-header-desc-color: #000;
+    /* post */
+    --abe-post-width: 43.75rem;
+    /* radius */
+    --abe-radius: .5rem;
+    --abe-radius-sm: 0.125rem;
+}
+
+.container {
+    width: 61.5rem;
+    max-width: 100%;
+}
+
+@media (max-width: 991px) {
+    :root {
+        --bs-gutter-x: 1.5rem;
+    }
+}

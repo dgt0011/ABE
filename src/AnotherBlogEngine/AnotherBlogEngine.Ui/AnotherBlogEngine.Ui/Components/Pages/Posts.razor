@@ -1,0 +1,18 @@
+﻿@page "/"
+
+
+<main class="container">
+    @if (PostSummaries == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        @foreach (var postSummaryItem in PostSummaries)
+        {
+            <PostSummary Summary="postSummaryItem" />
+        }
+    }
+
+</main>
+

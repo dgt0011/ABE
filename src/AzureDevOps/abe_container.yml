@@ -1,0 +1,37 @@
+trigger:
+  branches:
+    include:
+    - master
+
+variables:
+- name: tag
+  value: '$(Build.BuildId)'
+
+stages:
+- stage: Build
+  displayName: Build image
+  jobs:
+  - job: Build_and_Push
+    displayName: Build & Push Docker image
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - task: Docker@2
+      displayName: Build an image
+      inputs:
+        command: build
+        dockerfile: '$(Build.SourcesDirectory)/src/cloudformation/ecs/Dockerfile'
+        buildContext: $(Build.SourcesDirectory)/src/cloudformation/ecs'
+        repository: $(DOCKER_REPOSITORY_NAME)
+    - task: ECRPushImage@1
+      inputs:
+        awsCredentials: $(SERVICE_CONNECTION_NAME)
+        regionName: $(AWS_REGION)
+        imageSource: 'imagename'
+        sourceImageName: $(DOCKER_REPOSITORY_NAME)
+        sourceImageTag: $(Build.BuildId)
+        pushTag: latest-abe
+        repositoryName: $(DOCKER_REPOSITORY_NAME)
+        logRequest: true
+        logResponse: true
+

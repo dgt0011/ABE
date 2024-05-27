@@ -1,0 +1,378 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A stack for deploying the containerized Another Blog Engine (ABE) in AWS Fargate.
+             This stack runs containers in private VPC subnets, and includes a
+             public facing load balancer to register the services in.
+             This stack has dependancies on the VPC stack and the RDS stack.
+
+Parameters:
+  ServiceName:
+    Type: String
+    Default: abe-app
+    Description: A name for the service.  
+                 This name will be used to create the ECS service, task definition, 
+                 and used as a prefix for other resources.
+  ECRRepository:
+    Type: String
+    Default: platform-repository
+    Description: The name of the ECR repository where the docker image is stored
+  ECRTag:
+    Type: String
+    Default: latest-abe
+    Description: The tag of the docker image to use
+  ContainerPort:
+    Type: Number
+    Default: 80
+    Description: What port number the application inside the docker container is binding to
+  ContainerCpu:
+    Type: Number
+    Default: 256
+    Description: How much CPU to give the container. 1024 is 1 CPU
+  ContainerMemory:
+    Type: Number
+    Default: 512
+    Description: How much memory in megabytes to give the container
+  Path:
+    Type: String
+    Default: "*"
+    Description: A path on the public load balancer that this service
+                 should be connected to. Use * to send all load balancer
+                 traffic to this service.
+  Priority:
+    Type: Number
+    Default: 1
+    Description: The priority for the routing rule added to the load balancer.
+                 This only applies if your have multiple services which have been
+                 assigned to different paths on the load balancer.
+  DesiredCount:
+    Type: Number
+    Default: 2
+    Description: How many copies of the service task to run
+  DBSecretName:
+    Type: String
+    Default: postgresdb-blog-user-password
+    Description: The name of the secret in AWS Secrets Manager that contains 
+                 the database password.
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The VPC where the service will be deployed
+    Default: vpc-0cb9af24e2959c07c
+  PublicSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: The public subnets where the load balancer service will be deployed
+    Default: [subnet-01504843259cfd97a, subnet-067722dd54f69d13b, subnet-01c9be9c478e8d400]
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: The private subnets where the containers will be deployed
+    Default: [subnet-0224bfb6a53a26cad, subnet-08da642815a96a8b0, subnet-0de86f3ddc4fc627f]
+  CertificateId:
+    Type: String
+    Description: The ID of the certificate to use for HTTPS, e.g. 12345678-1234-1234-1234-123456789012
+
+Resources:
+
+  # ECS log group
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${ServiceName}'
+      RetentionInDays: 14
+
+  # ECS Resources
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub '${ServiceName}-cluster'
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  PublicLoadBalancerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ServiceName}-public-alb-sg'
+      GroupDescription: Access to the public facing load balancer
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+          # Allow access to ALB from anywhere on the internet
+          - CidrIp: 0.0.0.0/0
+            IpProtocol: -1
+
+  FargateContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ServiceName}-sg'
+      GroupDescription: Access to the Fargate containers
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref PublicLoadBalancerSG
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443 
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 5432 
+          ToPort: 5432
+          CidrIp: 192.168.0.0/16
+
+  PublicLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${ServiceName}-elb'
+      Scheme: internet-facing
+      LoadBalancerAttributes:
+      - Key: idle_timeout.timeout_seconds
+        Value: '30'
+      Subnets:
+        - !Select [ 0, !Ref PublicSubnetIds]
+        - !Select [ 1, !Ref PublicSubnetIds]
+        - !Select [ 2, !Ref PublicSubnetIds]
+      SecurityGroups: [!Ref 'PublicLoadBalancerSG']
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetType: ip
+      Name: !Sub '${ServiceName}-tg'
+      Port: !Ref 'ContainerPort'
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VpcId
+
+  HttpLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - PublicLoadBalancer
+    Properties:
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            Host: '#{host}'
+            Path: '/#{path}'
+            Query: '#{query}'
+            StatusCode: HTTP_301
+      LoadBalancerArn: 
+        Ref: PublicLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  HttpsLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - PublicLoadBalancer
+    Properties:
+      Certificates:
+        - CertificateArn: !Sub arn:aws:acm:${AWS::Region}:${AWS::AccountId}:certificate/${CertificateId}
+      DefaultActions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: 'forward'
+      LoadBalancerArn: !Ref 'PublicLoadBalancer'
+      Port: 443
+      Protocol: HTTPS
+
+  HttpsLoadBalancerListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: 'forward'
+      Conditions:
+        - Field: path-pattern
+          Values: [!Ref 'Path']
+      ListenerArn: !Ref HttpsLoadBalancerListener
+      Priority: !Ref 'Priority'
+
+  ECSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: ecs-service
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+              - 'ec2:AttachNetworkInterface'
+              - 'ec2:CreateNetworkInterface'
+              - 'ec2:CreateNetworkInterfacePermission'
+              - 'ec2:DeleteNetworkInterface'
+              - 'ec2:DeleteNetworkInterfacePermission'
+              - 'ec2:Describe*'
+              - 'ec2:DetachNetworkInterface'
+              - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
+              - 'elasticloadbalancing:DeregisterTargets'
+              - 'elasticloadbalancing:Describe*'
+              - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
+              - 'elasticloadbalancing:RegisterTargets'
+            Resource: '*'
+
+  ECSExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ServiceName}-execution-role'
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: AmazonECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                - 'ecr:GetAuthorizationToken'
+                - 'ecr:BatchCheckLayerAvailability'
+                - 'ecr:GetDownloadUrlForLayer'
+                - 'ecr:BatchGetImage'
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: '*'
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ServiceName}-task-role'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: "/"
+      Policies:
+      - PolicyName: s3Access
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+            Resource: [
+              !Join [ "", [ "arn:aws:s3:::", "dgt-static-images-website" ] ]
+            ]
+      - PolicyName: secretAccess
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+            Resource:
+            - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${DBSecretName}-??????"
+
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref 'ServiceName'
+      Cpu: !Ref 'ContainerCpu'
+      Memory: !Ref 'ContainerMemory'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref ECSExecutionRole
+      TaskRoleArn: !Ref ECSTaskRole
+      ContainerDefinitions:
+        - Name: !Ref 'ServiceName'
+          Cpu: !Ref 'ContainerCpu'
+          Memory: !Ref 'ContainerMemory'
+          ReadonlyRootFilesystem: true
+          Image:
+            !Join [
+              '.',
+              [
+                !Ref AWS::AccountId,
+                'dkr.ecr',
+                !Ref AWS::Region,
+                !Sub 'amazonaws.com/${ECRRepository}:${ECRTag}'
+              ]
+            ]
+          PortMappings:
+            - ContainerPort: !Ref 'ContainerPort'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: ecs
+
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn: HttpsLoadBalancerListenerRule
+    Properties:
+      ServiceName: !Ref 'ServiceName'
+      Cluster: !Ref ECSCluster
+      LaunchType: FARGATE
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 75
+      DesiredCount: !Ref DesiredCount
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups: 
+            - !Ref 'FargateContainerSecurityGroup'
+          Subnets:
+            - !Select [ 0, !Ref PrivateSubnetIds]
+            - !Select [ 1, !Ref PrivateSubnetIds]
+            - !Select [ 2, !Ref PrivateSubnetIds]
+      TaskDefinition: !Ref ECSTaskDefinition
+      LoadBalancers:
+        - ContainerName: !Ref 'ServiceName'
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Ref TargetGroup
+
+Outputs:
+  ClusterName:
+    Description: The name of the ECS cluster
+    Value: !Ref 'ECSCluster'
+    Export:
+      Name: BlogifierEcsClusterName
+  ExternalUrl:
+    Description: The url of the external load balancer
+    Value: !Join ['', ['http://', !GetAtt 'PublicLoadBalancer.DNSName']]
+    Export:
+      Name: BlogifierExternalUrl
+  ECSRole:
+    Description: The ARN of the ECS role
+    Value: !GetAtt 'ECSRole.Arn'
+    Export:
+      Name: BlogifierECSRole
+  ECSExecutionRole:
+    Description: The ARN of the ECS role
+    Value: !GetAtt 'ECSExecutionRole.Arn'
+    Export:
+      Name: BlogifierECSExecutionRole
+  PublicListener:
+    Description: The ARN of the public load balancer's Listener
+    Value: !Ref HttpsLoadBalancerListener
+    Export:
+      Name: BlogifierPublicListener
+  FargateContainerSecurityGroup:
+    Description: A security group used to allow Fargate containers to receive traffic
+    Value: !Ref 'FargateContainerSecurityGroup'
+    Export:
+      Name: BlogifierContainerSecurityGroup

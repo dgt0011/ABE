@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ABE.DBUpgrader": {
+      "commandName": "Project",
+      "commandLineArgs": ""
+    }
+  }
+}
