@@ -1,0 +1,8 @@
+﻿[*.cs]
+
+# IDE0290: Use primary constructor
+dotnet_diagnostic.IDE0290.severity = none
+
+# IDE0028: Simplify collection initialization
+#		   In the majority of cases, this can't be applied as the collection has no initial items to add
+dotnet_diagnostic.IDE0028.severity = none

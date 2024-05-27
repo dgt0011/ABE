@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>902f8637-62dd-41bb-b178-32d2fde43431</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Scripts\postgresdb-blog-script001-create-table-blog_post.sql" />
+    <None Remove="Scripts\postgresdb-blog-script002-create-table-topic.sql" />
+    <None Remove="Scripts\postgresdb-blog-script003-create-table-term.sql" />
+    <None Remove="Scripts\postgresdb-blog-script004-create-table-tag.sql" />
+    <None Remove="Scripts\postgresdb-blog-script005-alter-table-blog_post.sql" />
+    <None Remove="Scripts\postgresdb-blog-script006-create-table-blog_post_tag.sql" />
+    <None Remove="Scripts\postgresdb-blog-script007-create-table-blog_post_topic.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\postgresdb-blog-script001-create-table-blog_post.sql" />
+    <EmbeddedResource Include="Scripts\postgresdb-blog-script007-create-table-blog_post_topic.sql" />
+    <EmbeddedResource Include="Scripts\postgresdb-blog-script006-create-table-blog_post_tag.sql" />
+    <EmbeddedResource Include="Scripts\postgresdb-blog-script004-create-table-tag.sql" />
+    <EmbeddedResource Include="Scripts\postgresdb-blog-script003-create-table-term.sql" />
+    <EmbeddedResource Include="Scripts\postgresdb-blog-script002-create-table-topic.sql" />
+    <EmbeddedResource Include="Scripts\postgresdb-blog-script005-alter-table-blog_post.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.SecretsManager" Version="3.7.302.27" />
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="dbup-postgresql" Version="5.0.40" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>

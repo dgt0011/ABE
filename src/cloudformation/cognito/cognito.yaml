@@ -1,0 +1,140 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  Create an AWS Cognito User Pool with a User Group and App Client for securing a web application.
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  sesIdentity:
+    Description: The SES identity to use for sending emails
+    Type: String
+    Default: no-reply@darrentuer.com
+  userPoolName:
+    Description: The display name of the user pool
+    Type: String
+    Default: BlogAppUserPool
+  userPoolGroupName:
+    Description: The display name of the user pool group
+    Type: String
+    Default: BlogAppUserGroup
+  minPasswordLength:
+    Description: The minimum length of the password
+    Type: Number
+    MinValue: 12
+    Default: 12
+  passwrordRequiresLowercase:
+    Description: Whether the password requires a lowercase character
+    Type: String
+    Default: true
+  passwordRequiresUppercase:
+    Description: Whether the password requires an uppercase character
+    Type: String
+    Default: true
+  passwordRequiresNumbers:
+    Description: Whether the password requires a number
+    Type: String
+    Default: true
+  passwordRequiresSymbols:
+    Description: Whether the password requires a symbol
+    Type: String
+    Default: true
+  userPoolDomainName:
+    Description: The domain name of the user pool
+    Type: String
+    Default: blog-app
+
+Resources:
+
+  CognitoSESAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - email.cognito-idp.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: emailAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+            - Effect: Allow
+              Action:
+              - ses:SendEmail
+              - ses:SendRawEmail
+              Resource:
+              - !Sub arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/${sesIdentity}
+              Condition:
+                StringEquals:
+                  aws:SourceAccount: !Sub ${AWS::AccountId}
+
+  UserPool:
+    DependsOn: CognitoSESAccessRole
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Ref userPoolName
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: !Ref minPasswordLength
+          RequireLowercase: !Ref passwrordRequiresLowercase
+          RequireUppercase: !Ref passwordRequiresUppercase
+          RequireNumbers: !Ref passwordRequiresNumbers
+          RequireSymbols: !Ref passwordRequiresSymbols
+      MfaConfiguration: "OFF"
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      EmailConfiguration:
+        EmailSendingAccount: DEVELOPER
+        SourceArn: !Sub arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/${sesIdentity}
+
+  AdminUserPoolGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: AdminUserGroup
+      UserPoolId: !Ref UserPool
+      Description: "Admin user group for User Pool"
+
+  UserGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: !Ref userPoolGroupName
+      UserPoolId: !Ref UserPool
+      Description: !Sub "Default user group for User Pool '${userPoolName}'"
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref userPoolDomainName
+      UserPoolId: !Ref UserPool
+
+  AppClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Ref userPoolDomainName
+      AllowedOAuthFlowsUserPoolClient: True
+      SupportedIdentityProviders: 
+        - COGNITO
+      UserPoolId: !Ref UserPool
+      GenerateSecret: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      CallbackURLs:
+        - https://localhost:4200/signin-oidc
+      LogoutURLs:
+        - https://localhost:4200/Admin/SignedOut
+      PreventUserExistenceErrors: ENABLED
