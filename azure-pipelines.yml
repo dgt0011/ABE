@@ -1,7 +1,5 @@
 trigger:
-  branches:
-    include:
-    - main
+  - master
 
 stages:
 - stage: Build
@@ -24,7 +22,7 @@ stages:
         inputs:
           SonarQube: 'SonarQube'
           scannerMode: 'MSBuild'
-          projectKey: 'ABE_Temp_ABE_Temp_AY50sPm2rLxhXEuRtbaP'
+          projectKey: 'ABE_ABE_AY_CreOkgIe1wxLKVufo'
           projectName: 'ABE'
 
       - task: DotNetCoreCLI@2
