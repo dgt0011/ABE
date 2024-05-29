@@ -32,7 +32,6 @@ namespace AnotherBlogEngine.Core.Providers
             }
 
             Logger?.TraceMethodExit(prefix: nameof(Providers));
-            //return retVal;
 
             return await Task.FromResult(retVal);
         }

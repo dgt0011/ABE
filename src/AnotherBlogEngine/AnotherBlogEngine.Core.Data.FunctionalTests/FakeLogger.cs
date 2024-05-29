@@ -19,12 +19,14 @@ namespace AnotherBlogEngine.Core.Data.FunctionalTests
             if (!IsEnabled(logLevel))
                 return;
 
-            if (formatter == null)
-                throw new ArgumentNullException(nameof(formatter));
+            ArgumentNullException.ThrowIfNull(formatter);
 
-            //if (exception == null) return;
+            var str = string.Empty;
+            if (exception is not null)
+            {
+                str = formatter(state, exception);
+            }
 
-            var str = formatter(state, exception);
             if (string.IsNullOrEmpty(str))
                 return;
 

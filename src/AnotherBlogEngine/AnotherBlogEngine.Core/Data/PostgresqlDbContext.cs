@@ -30,13 +30,13 @@ namespace AnotherBlogEngine.Core.Data
 
             if (_connectionString == string.Empty)
             {
-                throw new ApplicationException("Connection to the database cannot be established.");
+                throw new ApplicationException("Connection to the database cannot be established - connection string is empty.");
             }
 
             var retVal = new NpgsqlConnection(_connectionString);
             if (retVal.State != ConnectionState.Closed)
             {
-                throw new ApplicationException("Connection to the database cannot be established.");
+                throw new ApplicationException("Connection to the database cannot be established.  Connection is not in a closed state.");
             }
             return retVal;
         }

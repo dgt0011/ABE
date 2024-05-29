@@ -312,77 +312,93 @@ namespace AnotherBlogEngine.Core.Data
         private static async Task<bool> ManageTopics(PostDetailsDto dto, PostDetailsDto storedDto, IDbTransaction transaction)
         {
             bool result = true;
+
+            result &= await SaveAddedTopics(dto, storedDto, transaction);
+
+            result &= await DeleteRemovedTopics(dto, storedDto, transaction);
+
+            return result;
+        }
+
+
+        private static async Task<bool> SaveAddedTopics(PostDetailsDto dto, PostDetailsDto storedDto, IDbTransaction transaction)
+        {
+            var result = true;
+
             var toStoreTopicRelationshipIds = new List<long>();
 
-            // does the post already have a relationship with the topic/s?
-            if (dto.Topics != null && dto.Topics.Count != 0)
+            if (dto.Topics == null || dto.Topics.Count == 0)
             {
-                if (storedDto is not { Topics: { } } || storedDto.Topics.Count == 0)
-                {
-                    // we need to store all topic ids
-                    toStoreTopicRelationshipIds.AddRange(dto.Topics.Select(topic => topic.id));
-                }
-                else
-                {
-                    foreach (var topic in dto.Topics)
-                    {
-                        var storedTopic = storedDto.Topics.SingleOrDefault(a => a.id == topic.id);
-                        if (storedTopic == null)
-                        {
-                            // not currently stored
-                            toStoreTopicRelationshipIds.Add(topic.id);
-                        }
-                    }
-                }
+                return result;
+            }
 
-                if (toStoreTopicRelationshipIds.Count != 0)
-                {
-                    foreach (var storeTopicRelationshipId in toStoreTopicRelationshipIds)
-                    {
-                        var insertCount =
-                            await transaction.Connection!.ExecuteAsync(
-                                InsertPostTopicRelationshipSql,
-                                new { PostId = storedDto.id, TopicId = storeTopicRelationshipId },
-                                transaction);
+            if (storedDto is not { Topics: { } } || storedDto.Topics.Count == 0)
+            {
+                // we need to store all topic ids
+                toStoreTopicRelationshipIds.AddRange(dto.Topics.Select(topic => topic.id));
+            }
+            else
+            {
+                toStoreTopicRelationshipIds.AddRange(
+                    from topic in dto.Topics 
+                    let storedTopic = storedDto.Topics.SingleOrDefault(a => a.id == topic.id) 
+                    where storedTopic == null 
+                    select topic.id);
+            }
 
-                        result &= insertCount > 0;
-                    }
+            if (toStoreTopicRelationshipIds.Count != 0)
+            {
+                foreach (var storeTopicRelationshipId in toStoreTopicRelationshipIds)
+                {
+                    var insertCount =
+                        await transaction.Connection!.ExecuteAsync(
+                            InsertPostTopicRelationshipSql,
+                            new { PostId = storedDto.id, TopicId = storeTopicRelationshipId },
+                            transaction);
+
+                    result &= insertCount > 0;
                 }
             }
 
+            return result;
+        }
+
+        private static async Task<bool> DeleteRemovedTopics(PostDetailsDto dto, PostDetailsDto storedDto, IDbTransaction transaction)
+        {
+            var result = true;
+
             var toRemoveTopicRelationshipIds = new List<long>();
 
-            if (storedDto is { Topics: { } } && storedDto.Topics.Count != 0)
+            if (storedDto is not { Topics: { } } || storedDto.Topics.Count == 0)
             {
-                //remove any relationships that no longer exist
-                if (dto.Topics is null || dto.Topics.Count == 0)
-                {
-                    toRemoveTopicRelationshipIds.AddRange(storedDto.Topics.Select(topic => topic.id));
-                }
-                else
-                {
-                    foreach (var storedDtoTopic in storedDto.Topics)
-                    {
-                        var topic = dto.Topics.SingleOrDefault(a => a.id == storedDtoTopic.id);
-                        if (topic == null)
-                        {
-                            toRemoveTopicRelationshipIds.Add(storedDtoTopic.id);
-                        }
-                    }
-                }
+                return result;
+            }
 
-                if (toRemoveTopicRelationshipIds.Count != 0)
-                {
-                    foreach (var topicId in toRemoveTopicRelationshipIds)
-                    {
-                        var deleteCount =
-                            await transaction.Connection!.ExecuteAsync(
-                                DeletePostTopicRelationshipSql,
-                                new { PostId = dto.id, TopicId = topicId },
-                                transaction);
+            //remove any relationships that no longer exist
+            if (dto.Topics is null || dto.Topics.Count == 0)
+            {
+                toRemoveTopicRelationshipIds.AddRange(storedDto.Topics.Select(topic => topic.id));
+            }
+            else
+            {
+                toRemoveTopicRelationshipIds.AddRange(
+                    from storedDtoTopic in storedDto.Topics 
+                    let topic = dto.Topics.SingleOrDefault(a => a.id == storedDtoTopic.id) 
+                    where topic == null 
+                    select storedDtoTopic.id);
+            }
 
-                        result &= deleteCount > 0;
-                    }
+            if (toRemoveTopicRelationshipIds.Count != 0)
+            {
+                foreach (var topicId in toRemoveTopicRelationshipIds)
+                {
+                    var deleteCount =
+                        await transaction.Connection!.ExecuteAsync(
+                            DeletePostTopicRelationshipSql,
+                            new { PostId = dto.id, TopicId = topicId },
+                            transaction);
+
+                    result &= deleteCount > 0;
                 }
             }
 
@@ -392,77 +408,92 @@ namespace AnotherBlogEngine.Core.Data
         private static async Task<bool> ManageTags(PostDetailsDto dto, PostDetailsDto storedDto, IDbTransaction transaction)
         {
             bool result = true;
+
+            result &= await SaveAddedTags(dto, storedDto, transaction);
+
+            result &= await DeleteRemovedTags(dto, storedDto, transaction);
+
+            return result;
+        }
+
+        private static async Task<bool> SaveAddedTags(PostDetailsDto dto, PostDetailsDto storedDto, IDbTransaction transaction)
+        {
+            var result = true;
+
             var toStoreTagRelationshipIds = new List<long>();
 
-            // does the post already have a relationship with the topic/s?
-            if (dto.Tags != null && dto.Tags.Count != 0)
+            if (dto.Tags is null || dto.Tags.Count == 0)
             {
-                if (storedDto is not { Tags: { } } || storedDto.Tags.Count == 0)
-                {
-                    // we need to store all topic ids
-                    toStoreTagRelationshipIds.AddRange(dto.Tags.Select(tag => tag.id));
-                }
-                else
-                {
-                    foreach (var tag in dto.Tags)
-                    {
-                        var storedTag = storedDto.Tags.SingleOrDefault(a => a.id == tag.id);
-                        if (storedTag == null)
-                        {
-                            // not currently stored
-                            toStoreTagRelationshipIds.Add(tag.id);
-                        }
-                    }
-                }
+                return result;
+            }
 
-                if (toStoreTagRelationshipIds.Count != 0)
-                {
-                    foreach (var storeTagRelationshipId in toStoreTagRelationshipIds)
-                    {
-                        var insertCount =
-                            await transaction.Connection!.ExecuteAsync(
-                                InsertPostTagRelationshipSql,
-                                new { PostId = storedDto.id, TagId = storeTagRelationshipId },
-                                transaction);
+            if (storedDto is not { Tags: { } } || storedDto.Tags.Count == 0)
+            {
+                // we need to store all topic ids
+                toStoreTagRelationshipIds.AddRange(dto.Tags.Select(tag => tag.id));
+            }
+            else
+            {
+                toStoreTagRelationshipIds.AddRange(
+                    from tag in dto.Tags
+                    let storedTag = storedDto.Tags.SingleOrDefault(a => a.id == tag.id)
+                    where storedTag == null
+                    select tag.id);
+            }
 
-                        result &= insertCount > 0;
-                    }
+            if (toStoreTagRelationshipIds.Count != 0)
+            {
+                foreach (var storeTagRelationshipId in toStoreTagRelationshipIds)
+                {
+                    var insertCount =
+                        await transaction.Connection!.ExecuteAsync(
+                            InsertPostTagRelationshipSql,
+                            new { PostId = storedDto.id, TagId = storeTagRelationshipId },
+                            transaction);
+
+                    result &= insertCount > 0;
                 }
             }
 
+            return result;
+        }
+
+        private static async Task<bool> DeleteRemovedTags(PostDetailsDto dto, PostDetailsDto storedDto, IDbTransaction transaction)
+        {
+            var result = true;
+
             var toRemoveTagRelationshipIds = new List<long>();
 
-            if (storedDto is { Tags: { } } && storedDto.Tags.Count != 0)
+            if (storedDto is not { Tags: { } } || storedDto.Tags.Count == 0)
             {
-                //remove any relationships that no longer exist
-                if (dto.Tags is null || dto.Tags.Count == 0)
-                {
-                    toRemoveTagRelationshipIds.AddRange(storedDto.Tags.Select(topic => topic.id));
-                }
-                else
-                {
-                    foreach (var storedDtoTopic in storedDto.Tags)
-                    {
-                        var topic = dto.Tags.SingleOrDefault(a => a.id == storedDtoTopic.id);
-                        if (topic == null)
-                        {
-                            toRemoveTagRelationshipIds.Add(storedDtoTopic.id);
-                        }
-                    }
-                }
+                return result;
+            }
 
-                if (toRemoveTagRelationshipIds.Count != 0)
-                {
-                    foreach (var tagId in toRemoveTagRelationshipIds)
-                    {
-                        var deleteCount =
-                            await transaction.Connection!.ExecuteAsync(
-                                DeletePostTagRelationshipSql,
-                                new { PostId = dto.id, TagId = tagId },
-                                transaction);
+            //remove any relationships that no longer exist
+            if (dto.Tags is null || dto.Tags.Count == 0)
+            {
+                toRemoveTagRelationshipIds.AddRange(storedDto.Tags.Select(topic => topic.id));
+            }
+            else
+            {
+                toRemoveTagRelationshipIds.AddRange(
+                    from storedDtoTopic in storedDto.Tags
+                    let topic = dto.Tags.SingleOrDefault(a => a.id == storedDtoTopic.id)
+                    where topic == null
+                    select storedDtoTopic.id);
+            }
 
-                        result &= deleteCount > 0;
-                    }
+            if (toRemoveTagRelationshipIds.Count != 0)
+            {
+                foreach (var tagId in toRemoveTagRelationshipIds)
+                {
+                    var deleteCount =
+                        await transaction.Connection!.ExecuteAsync(
+                            DeletePostTagRelationshipSql,
+                            new { PostId = dto.id, TagId = tagId },
+                            transaction);
+
+                    result &= deleteCount > 0;
                 }
             }
 

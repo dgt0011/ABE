@@ -11,7 +11,7 @@ namespace AnotherBlogEngine.Core.Data.Interfaces;
 /// </summary>
 public interface IBaseRepository<TEntity> where TEntity : IEntity, new()
 {
-    ILogger Logger { set; }
+    ILogger Logger { set; get; }
 
     Task<TEntity?> Find(long id);
 

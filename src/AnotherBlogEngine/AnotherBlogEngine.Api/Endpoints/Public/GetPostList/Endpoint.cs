@@ -23,7 +23,7 @@ namespace AnotherBlogEngine.Api.Endpoints.Public.GetPostList
 
         }
 
-        public override async Task<Results<Ok<Response>, NotFound>> ExecuteAsync(Request request, CancellationToken token)
+        public override async Task<Results<Ok<Response>, NotFound>> ExecuteAsync(Request request, CancellationToken ct)
         {
             Logger.LogDebug("Fetching {PostCount} Post Summaries starting from position {StartIndex}", request.PostCount, request.StartIndex);
 

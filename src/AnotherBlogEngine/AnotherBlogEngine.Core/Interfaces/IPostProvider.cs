@@ -11,8 +11,6 @@ namespace AnotherBlogEngine.Core.Interfaces
 
         Task<List<PostSummaryItem>> GetPostSummaries(Constants.PostStatus postStatusFilter, long postCount, long startIndex);
 
-        //Task<PostDetailsDataItem?> GetPostBySlug(string slug);
-
         Task<PostItem?> GetPostBySlug(string slug);
     }
 }
