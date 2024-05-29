@@ -9,9 +9,9 @@ using FastEndpoints;
 
 namespace AnotherBlogEngine.Api
 {
-    public class Program
+    public static class Program
     {
-        const string AllowedOrigins = "_allowSpecificOrigins";
+        private const string AllowedOrigins = "_allowSpecificOrigins";
 
         public static void Main(string[] args)
         {

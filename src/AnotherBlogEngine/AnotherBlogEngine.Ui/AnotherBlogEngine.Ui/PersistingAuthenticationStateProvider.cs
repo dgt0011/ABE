@@ -22,9 +22,9 @@ internal sealed class PersistingAuthenticationStateProvider : AuthenticationStat
     public override Task<AuthenticationState> GetAuthenticationStateAsync() => _authenticationStateTask ??
             throw new InvalidOperationException($"Do not call {nameof(GetAuthenticationStateAsync)} outside of the DI scope for a Razor component. Typically, this means you can call it only within a Razor component or inside another DI service that is resolved for a Razor component.");
 
-    public void SetAuthenticationState(Task<AuthenticationState> task)
+    public void SetAuthenticationState(Task<AuthenticationState> authenticationStateTask)
     {
-        _authenticationStateTask = task;
+        _authenticationStateTask = authenticationStateTask;
     }
 
     private async Task OnPersistingAsync()

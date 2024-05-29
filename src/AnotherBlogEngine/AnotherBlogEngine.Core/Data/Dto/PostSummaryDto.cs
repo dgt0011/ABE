@@ -3,7 +3,7 @@
 namespace AnotherBlogEngine.Core.Data.Dto
 {
     [Table("blog_post")]
-    public class PostSummaryDto : DtoBase, IEquatable<PostSummaryDto>
+    public sealed class PostSummaryDto : DtoBase, IEquatable<PostSummaryDto>
     {
 
 #pragma warning disable IDE1006

@@ -4,7 +4,7 @@ using Dapper.Contrib.Extensions;
 namespace AnotherBlogEngine.Core.Data.Dto
 {
     [Table("tag")]
-    public class TagDto : DtoBase, IEquatable<TagDto>
+    public sealed class TagDto : DtoBase, IEquatable<TagDto>
     {
 #pragma warning disable IDE1006
         [Required]

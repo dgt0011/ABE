@@ -6,12 +6,12 @@ namespace AnotherBlogEngine.Core.Extensions
 {
     public static class LoggerExtensions
     {
-        public static void TraceMethodEntry(this ILogger logger, [CallerFilePath] string? callerFilePath = null, [CallerMemberName] string? caller = null ,string? prefix = null, string? suffix = null)
+        public static void TraceMethodEntry(this ILogger logger, string? prefix = null, string? suffix = null, [CallerFilePath] string? callerFilePath = null, [CallerMemberName] string? caller = null)
         {
             TraceMethod("->", logger, callerFilePath, caller, prefix, suffix);
         }
 
-        public static void TraceMethodExit(this ILogger logger, [CallerFilePath] string? callerFilePath = null, [CallerMemberName] string? caller = null, string? prefix = null, string? suffix = null)
+        public static void TraceMethodExit(this ILogger logger, string? prefix = null, string? suffix = null, [CallerFilePath] string? callerFilePath = null, [CallerMemberName] string? caller = null)
         {
             TraceMethod("<-", logger, callerFilePath, caller, prefix, suffix);
         }
@@ -33,12 +33,9 @@ namespace AnotherBlogEngine.Core.Extensions
             }
 
             var callerTypeName = StripPath(callerFilePath);
-            if (!string.IsNullOrEmpty(prefix))
+            if (!string.IsNullOrEmpty(prefix) && !prefix.EndsWith('.'))
             {
-                if (!prefix.EndsWith('.'))
-                {
-                    prefix += ".";
-                }
+                prefix += ".";
             }
             logger.LogTrace($"{preamble} {prefix}{callerTypeName}.{caller}{suffix}");
         }

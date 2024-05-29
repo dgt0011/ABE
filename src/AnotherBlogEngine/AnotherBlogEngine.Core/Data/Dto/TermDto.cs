@@ -6,7 +6,7 @@ namespace AnotherBlogEngine.Core.Data.Dto
     [Table("term")]
 
     //TODO: These DTO can probably be internal?
-    public class TermDto : DtoBase, IEquatable<TermDto>
+    public sealed class TermDto : DtoBase, IEquatable<TermDto>
     {
 #pragma warning disable IDE1006
         [Required]

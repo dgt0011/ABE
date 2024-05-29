@@ -52,10 +52,10 @@ namespace AnotherBlogEngine.Core.Providers
             // ensure that the terms dictionary is primed
             _ = await Get();
 
-            if (_terms!.ContainsKey(key))
+            if (_terms!.TryGetValue(key, out var value))
             {
                 Logger?.TraceMethodExit(prefix: nameof(Providers));
-                return _terms[key];
+                return value;
             }
 
             Logger?.LogInformation($"Unknown term '{key}' requested.");

@@ -11,7 +11,7 @@ public sealed class UserInfo
 
 
     public const string UserIdClaimType = "sub";
-    //public const string NameClaimType = "name";
+
     public const string EmailClaimType = "email";
 
     public static UserInfo FromClaimsPrincipal(ClaimsPrincipal principal) =>

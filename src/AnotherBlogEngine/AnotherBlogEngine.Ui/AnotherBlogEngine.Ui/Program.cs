@@ -16,7 +16,7 @@ using Newtonsoft.Json.Linq;
 
 namespace AnotherBlogEngine.Ui
 {
-    public class Program
+    public static class Program
     {
 
         const string AWS_OIDC_SCHEME = "CognitoOidc";
@@ -82,7 +82,6 @@ namespace AnotherBlogEngine.Ui
 
         private static void RegisterAuthenticationServices(WebApplicationBuilder builder, IConfigurationRoot? config)
         {
-            //var metaDataUrl = string.Empty;
             var cognitoDomain = string.Empty;
             var clientId = string.Empty;
             var clientSecret = string.Empty;
@@ -93,7 +92,6 @@ namespace AnotherBlogEngine.Ui
             {
                 var section = config.GetSection("Authentication").GetSection("Cognito");
 
-                //metaDataUrl = section!.GetValue<string>("MetadataAddress");
                 cognitoDomain = section!.GetValue<string>("CognitoDomain");
                 clientId = section!.GetValue<string>("ClientId");
                 userPoolId = section!.GetValue<string>("UserPoolId");

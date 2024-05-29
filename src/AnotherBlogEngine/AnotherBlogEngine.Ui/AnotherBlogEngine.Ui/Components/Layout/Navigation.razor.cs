@@ -16,7 +16,6 @@ namespace AnotherBlogEngine.Ui.Components.Layout
 
         private string? _topicsLabel;
         private string? _searchLabel;
-        private string? _loginLabel;
 
         protected override async Task OnInitializedAsync()
         {
@@ -29,7 +28,6 @@ namespace AnotherBlogEngine.Ui.Components.Layout
             {
                 _topicsLabel = (await TermProvider.Get("TopicsLabel")).Value;
                 _searchLabel = (await TermProvider.Get("SearchLabel")).Value;
-                _loginLabel = (await TermProvider.Get("LoginLabel")).Value;
             }
         }
     }
